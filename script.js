@@ -14,7 +14,7 @@ let cachedResult = null;
 const GOOGLE_CLIENT_ID = '748402304369-9l1921or0au7t3n8j1qohhtj2pfovcin.apps.googleusercontent.com';
 
 // ※ 請換成您的真實 Google App Script 網址 ※
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDDny82ehG_2UswBSuMoT4111KmyW8-LtDv0RShU4G69Rw3uxUKwLyysY7BQmhuoRWZQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbydjlSRW9AVPZQWSgyJxdwHaIl1LnNy8n0NpomwO7oCwiekTMmL1YcyKudn8Sc9e4T2lw/exec';
 
 /* ────────────────────────────────────────────
    Google Identity Services 初始化
