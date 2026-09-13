@@ -1,33 +1,70 @@
 const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#f15bb5', '#00bbf9', '#00f5d4', '#ff6b6b', '#ffd166', '#06d6a0'];
 
-const pageLogin    = document.getElementById('page-login');
-const pageBalloons = document.getElementById('page-balloons');
-const pageResult   = document.getElementById('page-result');
+const pageLogin        = document.getElementById('page-login');
+const pageBalloons     = document.getElementById('page-balloons');
+const pageResult       = document.getElementById('page-result');
 const balloonContainer = document.getElementById('balloon-container');
-const submitBtn    = document.getElementById('submit-btn');
-const studentIdInput = document.getElementById('student-id');
-const giantBalloon = document.getElementById('giant-balloon');
-const backBtn      = document.getElementById('back-btn');
+const giantBalloon     = document.getElementById('giant-balloon');
+const backBtn          = document.getElementById('back-btn');
 
 let balloonInterval;
 let cachedResult = null;
 
-submitBtn.addEventListener('click', () => {
-    const studentId = studentIdInput.value.trim();
-    if (!studentId) { alert('請輸入學號'); return; }
+// ※ 請填入您的 Google Cloud Console OAuth 2.0 Client ID ※
+const GOOGLE_CLIENT_ID = '748402304369-9l1921or0au7t3n8j1qohhtj2pfovcin.apps.googleusercontent.com';
 
+// ※ 請換成您的真實 Google App Script 網址 ※
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDDny82ehG_2UswBSuMoT4111KmyW8-LtDv0RShU4G69Rw3uxUKwLyysY7BQmhuoRWZQ/exec';
+
+/* ────────────────────────────────────────────
+   Google Identity Services 初始化
+──────────────────────────────────────────── */
+function initGoogleSignIn() {
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: false,
+    });
+
+    google.accounts.id.renderButton(
+        document.getElementById('google-btn-container'),
+        {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'pill',
+            locale: 'zh-TW',
+            width: 280,
+        }
+    );
+}
+
+// 等待 GIS 腳本載入完成後初始化
+window.onload = () => {
+    const waitForGSI = setInterval(() => {
+        if (typeof google !== 'undefined' && google.accounts) {
+            clearInterval(waitForGSI);
+            initGoogleSignIn();
+        }
+    }, 100);
+};
+
+/* ────────────────────────────────────────────
+   使用者完成 Google 登入後的 callback
+──────────────────────────────────────────── */
+function handleCredential(response) {
+    const idToken = response.credential;
+
+    // 切換到氣球頁面，同時開始 fetch
     pageLogin.classList.remove('active');
     pageLogin.classList.add('hidden');
     pageBalloons.classList.remove('hidden');
     pageBalloons.classList.add('active');
 
     startBalloons();
-    fetchData(studentId);
-});
-
-studentIdInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') submitBtn.click();
-});
+    fetchData(idToken);
+}
 
 /* ────────────────────────────────────────────
    氣球生成
@@ -37,7 +74,7 @@ function startBalloons() {
     for (let i = 0; i < 8; i++) {
         setTimeout(() => createBalloon(), i * 150);
     }
-    // 之後每 250ms 再出一顆 → 密度更高
+    // 之後每 250ms 再出一顆
     balloonInterval = setInterval(createBalloon, 250);
 }
 
@@ -46,9 +83,9 @@ function createBalloon() {
     balloon.classList.add('balloon');
 
     const color    = colors[Math.floor(Math.random() * colors.length)];
-    const left     = 2 + Math.random() * 94;           // 2-96vw
-    const duration = 9 + Math.random() * 8;             // 9-17s，飄得很慢
-    const size     = 45 + Math.random() * 40;           // 45-85px 大小不一
+    const left     = 2 + Math.random() * 94;
+    const duration = 9 + Math.random() * 8;    // 9-17s
+    const size     = 45 + Math.random() * 40;  // 45-85px
     const rotation = -20 + Math.random() * 40;
 
     balloon.style.left   = `${left}vw`;
@@ -58,29 +95,29 @@ function createBalloon() {
     balloon.style.setProperty('--duration', `${duration}s`);
     balloon.style.setProperty('--rotation', `${rotation}deg`);
 
-    // 標記，方便之後找到它（不用隱形消失）
-    balloon.dataset.durationMs = duration * 1000;
-
     balloonContainer.appendChild(balloon);
 
-    // 飛出畫面後自行清除
     setTimeout(() => { if (balloon.parentElement) balloon.remove(); }, duration * 1000 + 200);
 }
 
 /* ────────────────────────────────────────────
-   資料取得
+   資料取得（以 Google ID Token 作為身份憑證）
 ──────────────────────────────────────────── */
-function fetchData(studentId) {
-    // ※ 請換成您的真實 Google App Script 網址 ※
-    const scriptUrl = `https://script.google.com/macros/s/AKfycbyhpc568MDo2tEaxvB-qkZstNCXYA6KdlLc20opYhnWqBZ1k9sF023P_RmvYBvRuuu8ww/exec?studentId=${studentId}`;
+function fetchData(idToken) {
+    const url = `${SCRIPT_URL}?idToken=${encodeURIComponent(idToken)}`;
 
     // 保證至少讓使用者欣賞 3 秒動畫
     const delay = new Promise(resolve => setTimeout(resolve, 3000));
 
-    const fetchPromise = fetch(scriptUrl)
+    const fetchPromise = fetch(url)
         .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
             return res.json();
+        })
+        .then(data => {
+            // App Script 回傳 error 欄位時視為失敗
+            if (data.error) throw new Error(data.error);
+            return data;
         });
 
     Promise.all([delay, fetchPromise])
@@ -89,28 +126,26 @@ function fetchData(studentId) {
             onDataReceived();
         })
         .catch(err => {
-            showFetchError(studentId, scriptUrl, err);
+            showFetchError(url, err);
         });
 }
 
 /* ────────────────────────────────────────────
    Fetch 失敗：將錯誤訊息直接顯示在氣球頁面上
 ──────────────────────────────────────────── */
-function showFetchError(studentId, url, err) {
+function showFetchError(url, err) {
     clearInterval(balloonInterval);
 
-    // 把錯誤訊息疊加在氣球頁面上
     const overlay = document.createElement('div');
     overlay.id = 'error-overlay';
     overlay.innerHTML = `
         <div id="error-box">
             <div id="error-icon">⚠️</div>
             <h2>資料讀取失敗</h2>
-            <div class="error-row"><span class="error-label">學號</span><code>${studentId}</code></div>
             <div class="error-row"><span class="error-label">錯誤</span><code>${err.message || err}</code></div>
-            <div class="error-row"><span class="error-label">URL</span><code class="error-url">${url}</code></div>
-            <p class="error-hint">請確認 App Script 網址是否正確，以及 CORS 設定是否允許外部請求。</p>
-            <button id="error-back-btn">返回重試</button>
+            <div class="error-row"><span class="error-label">URL</span><code class="error-url">${url.split('?')[0]}</code></div>
+            <p class="error-hint">請確認使用北科大學校信箱（@ntut.org.tw）登入，或聯絡管理員確認帳號是否已登記。</p>
+            <button id="error-back-btn">返回重新登入</button>
         </div>
     `;
     pageBalloons.appendChild(overlay);
@@ -122,6 +157,8 @@ function showFetchError(studentId, url, err) {
         pageLogin.classList.remove('hidden');
         pageLogin.classList.add('active');
         balloonContainer.innerHTML = '';
+        // 重新渲染 Google 登入按鈕
+        initGoogleSignIn();
     });
 }
 
@@ -130,9 +167,6 @@ function showFetchError(studentId, url, err) {
    其他氣球繼續飄動與生成，直到使用者點擊為止
 ──────────────────────────────────────────── */
 function onDataReceived() {
-    // 不在此處停止生成，背景氣球繼續熱鬧飄動
-
-    // 從已有氣球中挑一顆最接近畫面中段的作為大氣球起點
     const balloons = [...document.querySelectorAll('.balloon')];
     let chosen = null;
     if (balloons.length > 0) {
@@ -144,7 +178,6 @@ function onDataReceived() {
         });
         chosen = sorted[0];
     }
-
     showGiantBalloon(chosen);
 }
 
@@ -160,7 +193,6 @@ function showGiantBalloon(sourceBalloon) {
         startX = rect.left + rect.width  / 2;
         startY = rect.top  + rect.height / 2;
         color  = sourceBalloon.style.getPropertyValue('--balloon-color') || color;
-        // 原本的小氣球立刻隱藏（大氣球會從同樣位置出現，視覺上是「同一顆」）
         sourceBalloon.style.opacity = '0';
         setTimeout(() => { if (sourceBalloon.parentElement) sourceBalloon.remove(); }, 100);
     } else {
@@ -168,26 +200,21 @@ function showGiantBalloon(sourceBalloon) {
         startY = window.innerHeight + 80;
     }
 
-    // 定位大氣球於選中位置
     giantBalloon.style.setProperty('--balloon-color', color);
-    giantBalloon.style.transition  = 'none';
-    giantBalloon.style.left        = `${startX}px`;
-    giantBalloon.style.top         = `${startY}px`;
-    giantBalloon.style.transform   = 'translate(-50%, -50%) scale(1)';
+    giantBalloon.style.transition = 'none';
+    giantBalloon.style.left       = `${startX}px`;
+    giantBalloon.style.top        = `${startY}px`;
+    giantBalloon.style.transform  = 'translate(-50%, -50%) scale(1)';
 
-    // 讓它現身（display:flex）
     giantBalloon.classList.add('visible');
 
-    // 強制重繪再啟動 transition
     void giantBalloon.offsetWidth;
 
-    // 緩緩飄向正中央並放大
     giantBalloon.style.transition = 'left 3.5s ease-in-out, top 3.5s ease-in-out, transform 3.5s ease-in-out';
-    giantBalloon.style.left      = '50%';
-    giantBalloon.style.top       = '50%';
-    giantBalloon.style.transform = 'translate(-50%, -50%) scale(2.8)';
+    giantBalloon.style.left       = '50%';
+    giantBalloon.style.top        = '50%';
+    giantBalloon.style.transform  = 'translate(-50%, -50%) scale(2.8)';
 
-    // 到位後換成上下浮動 animation（show-giant 的 keyframes 已含 scale）
     setTimeout(() => {
         giantBalloon.style.transition = 'none';
         giantBalloon.classList.add('ready-to-click');
@@ -202,20 +229,18 @@ function showGiantBalloon(sourceBalloon) {
 giantBalloon.addEventListener('click', () => {
     if (!giantBalloon.classList.contains('show-giant')) return;
 
-    // 點擊瞬間停止產生新氣球
     clearInterval(balloonInterval);
 
-    // Step 1: 移除 animation，加上 freeze 讓瀏覽器在此幀看到靜態 transform
+    // Step 1: 凍結 animation，讓瀏覽器在此幀看到靜態 transform
     giantBalloon.classList.remove('show-giant', 'ready-to-click');
     giantBalloon.classList.add('freeze');
 
-    // Step 2: 雙層 requestAnimationFrame，確保瀏覽器已 commit 靜態值後才啟動 transition
+    // Step 2: 雙層 rAF 確保靜態值 commit 後才啟動 5s transition
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             giantBalloon.classList.remove('freeze');
             giantBalloon.classList.add('expanding');
 
-            // transition 5s，4.6s 時畫面已填滿，平順切換頁面
             setTimeout(() => {
                 renderResult(cachedResult);
 
@@ -224,7 +249,6 @@ giantBalloon.addEventListener('click', () => {
                 pageResult.classList.remove('hidden');
                 pageResult.classList.add('active');
 
-                // 清理氣球容器
                 setTimeout(() => {
                     giantBalloon.classList.remove('expanding', 'visible');
                     giantBalloon.style.transition = 'none';
@@ -254,7 +278,7 @@ function renderResult(data) {
             { icon: '🔗', label: '其他',       value: member.contact_3 },
         ];
 
-        let contactsHtml = contacts
+        const contactsHtml = contacts
             .filter(c => c.value)
             .map(c => `
                 <div class="contact-item">
@@ -278,9 +302,10 @@ function renderResult(data) {
    返回按鈕
 ──────────────────────────────────────────── */
 backBtn.addEventListener('click', () => {
-    studentIdInput.value = '';
     pageResult.classList.remove('active');
     pageResult.classList.add('hidden');
     pageLogin.classList.remove('hidden');
     pageLogin.classList.add('active');
+    // 重新渲染 Google 登入按鈕
+    initGoogleSignIn();
 });

@@ -52,61 +52,51 @@ body {
 /* 登入頁面 */
 .login-container {
     background: white;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 48px 44px;
+    border-radius: 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
     text-align: center;
     z-index: 10;
+    max-width: 420px;
+    width: 90%;
+}
+
+.login-logo {
+    font-size: 52px;
+    margin-bottom: 12px;
+    animation: loginBobble 3s ease-in-out infinite alternate;
+    display: block;
+}
+
+@keyframes loginBobble {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-12px); }
 }
 
 .login-container h1 {
     margin-bottom: 10px;
     color: var(--primary-color);
+    font-size: 26px;
 }
 
 .login-container p {
-    margin-bottom: 30px;
-    color: #666;
+    margin-bottom: 28px;
+    color: #555;
+    line-height: 1.6;
 }
 
-.input-group {
+#google-btn-container {
     display: flex;
-    gap: 10px;
     justify-content: center;
+    margin-bottom: 16px;
 }
 
-.input-group input {
-    padding: 12px 20px;
-    border: 2px solid #e1e1e1;
-    border-radius: 8px;
-    font-size: 16px;
-    outline: none;
-    transition: border-color 0.3s;
-    width: 250px;
+.login-hint {
+    font-size: 12px !important;
+    color: #aaa !important;
+    margin-bottom: 0 !important;
 }
 
-.input-group input:focus {
-    border-color: var(--primary-color);
-}
-
-.input-group button {
-    padding: 12px 24px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-}
-
-.input-group button:hover {
-    background-color: #357abd;
-}
-
-.input-group button:active {
-    transform: scale(0.95);
-}
 
 /* 氣球動畫頁面 - 多層漸層：地平線暖橙→淡粉→天藍→深藍天空 */
 #page-balloons {
