@@ -6,20 +6,18 @@
     <title>迎新分組查詢</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div id="app">
         <!-- 登入頁面 -->
         <section id="page-login" class="page active">
             <div class="login-container">
-                <div class="login-logo">🎈</div>
                 <h1>迎新分組查詢</h1>
-                <p>請使用<strong>學校 Google 帳號</strong>登入，系統將自動查詢您的分組</p>
-                <!-- Google 登入按鈕會被渲染在此 -->
-                <div id="google-btn-container"></div>
-                <p class="login-hint">請確認使用學校信箱（例如 s110590001@mail.ntut.edu.tw）</p>
+                <p>請輸入您的學號來獲取分組資訊</p>
+                <div class="input-group">
+                    <input type="text" id="student-id" placeholder="例如：110590001">
+                    <button id="submit-btn">查詢</button>
+                </div>
             </div>
         </section>
 
@@ -27,7 +25,7 @@
         <section id="page-balloons" class="page hidden">
             <div id="balloon-container"></div>
             <!-- 佔據螢幕的大氣球 (接收資料後顯示) -->
-            <div id="giant-balloon">
+            <div id="giant-balloon" class="hidden">
                 <div class="click-text">點擊開啟</div>
             </div>
         </section>

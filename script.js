@@ -1,70 +1,33 @@
 const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#f15bb5', '#00bbf9', '#00f5d4', '#ff6b6b', '#ffd166', '#06d6a0'];
 
-const pageLogin      = document.getElementById('page-login');
-const pageBalloons   = document.getElementById('page-balloons');
-const pageResult     = document.getElementById('page-result');
+const pageLogin    = document.getElementById('page-login');
+const pageBalloons = document.getElementById('page-balloons');
+const pageResult   = document.getElementById('page-result');
 const balloonContainer = document.getElementById('balloon-container');
-const giantBalloon   = document.getElementById('giant-balloon');
-const backBtn        = document.getElementById('back-btn');
+const submitBtn    = document.getElementById('submit-btn');
+const studentIdInput = document.getElementById('student-id');
+const giantBalloon = document.getElementById('giant-balloon');
+const backBtn      = document.getElementById('back-btn');
 
 let balloonInterval;
 let cachedResult = null;
 
-// ※ 請填入您的 Google Cloud Console OAuth 2.0 Client ID ※
-const GOOGLE_CLIENT_ID = '748402304369-9l1921or0au7t3n8j1qohhtj2pfovcin.apps.googleusercontent.com';
+submitBtn.addEventListener('click', () => {
+    const studentId = studentIdInput.value.trim();
+    if (!studentId) { alert('請輸入學號'); return; }
 
-/* ────────────────────────────────────────────
-   Google Identity Services 初始化
-   GIS 腳本載入完成後會呼叫此 callback
-──────────────────────────────────────────── */
-function initGoogleSignIn() {
-    google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleCredential,
-        auto_select: false,
-        cancel_on_tap_outside: false,
-    });
-
-    google.accounts.id.renderButton(
-        document.getElementById('google-btn-container'),
-        {
-            theme: 'outline',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'pill',
-            locale: 'zh-TW',
-            width: 280,
-        }
-    );
-}
-
-// GIS script 載入後自動呼叫
-window.onload = () => {
-    // 等待 GIS 腳本載入
-    const waitForGSI = setInterval(() => {
-        if (typeof google !== 'undefined' && google.accounts) {
-            clearInterval(waitForGSI);
-            initGoogleSignIn();
-        }
-    }, 100);
-};
-
-/* ────────────────────────────────────────────
-   使用者完成 Google 登入後的 callback
-──────────────────────────────────────────── */
-function handleCredential(response) {
-    const idToken = response.credential;
-
-    // 切換到氣球頁面，同時開始 fetch
     pageLogin.classList.remove('active');
     pageLogin.classList.add('hidden');
     pageBalloons.classList.remove('hidden');
     pageBalloons.classList.add('active');
 
     startBalloons();
-    fetchData(idToken);
-}
+    fetchData(studentId);
+});
 
+studentIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitBtn.click();
+});
 
 /* ────────────────────────────────────────────
    氣球生成
@@ -105,11 +68,11 @@ function createBalloon() {
 }
 
 /* ────────────────────────────────────────────
-   資料取得（以 Google ID Token 作為身份憑證）
+   資料取得
 ──────────────────────────────────────────── */
-function fetchData(idToken) {
+function fetchData(studentId) {
     // ※ 請換成您的真實 Google App Script 網址 ※
-    const scriptUrl = `https://script.google.com/macros/s/AKfycbxDDny82ehG_2UswBSuMoT4111KmyW8-LtDv0RShU4G69Rw3uxUKwLyysY7BQmhuoRWZQ/exec?idToken=${encodeURIComponent(idToken)}`;
+    const scriptUrl = `https://script.google.com/macros/s/AKfycbyhpc568MDo2tEaxvB-qkZstNCXYA6KdlLc20opYhnWqBZ1k9sF023P_RmvYBvRuuu8ww/exec?studentId=${studentId}`;
 
     // 保證至少讓使用者欣賞 3 秒動畫
     const delay = new Promise(resolve => setTimeout(resolve, 3000));
@@ -118,11 +81,6 @@ function fetchData(idToken) {
         .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
             return res.json();
-        })
-        .then(data => {
-            // App Script 回傳 error 欄位時視為失敗
-            if (data.error) throw new Error(data.error);
-            return data;
         });
 
     Promise.all([delay, fetchPromise])
@@ -131,26 +89,28 @@ function fetchData(idToken) {
             onDataReceived();
         })
         .catch(err => {
-            showFetchError(scriptUrl, err);
+            showFetchError(studentId, scriptUrl, err);
         });
 }
 
 /* ────────────────────────────────────────────
    Fetch 失敗：將錯誤訊息直接顯示在氣球頁面上
 ──────────────────────────────────────────── */
-function showFetchError(url, err) {
+function showFetchError(studentId, url, err) {
     clearInterval(balloonInterval);
 
+    // 把錯誤訊息疊加在氣球頁面上
     const overlay = document.createElement('div');
     overlay.id = 'error-overlay';
     overlay.innerHTML = `
         <div id="error-box">
             <div id="error-icon">⚠️</div>
             <h2>資料讀取失敗</h2>
+            <div class="error-row"><span class="error-label">學號</span><code>${studentId}</code></div>
             <div class="error-row"><span class="error-label">錯誤</span><code>${err.message || err}</code></div>
             <div class="error-row"><span class="error-label">URL</span><code class="error-url">${url}</code></div>
-            <p class="error-hint">請確認 App Script 網址是否正確，以及此 Google 帳號是否已登記在名單中。</p>
-            <button id="error-back-btn">返回重新登入</button>
+            <p class="error-hint">請確認 App Script 網址是否正確，以及 CORS 設定是否允許外部請求。</p>
+            <button id="error-back-btn">返回重試</button>
         </div>
     `;
     pageBalloons.appendChild(overlay);
@@ -162,8 +122,6 @@ function showFetchError(url, err) {
         pageLogin.classList.remove('hidden');
         pageLogin.classList.add('active');
         balloonContainer.innerHTML = '';
-        // 重新渲染 Google 登入按鈕
-        initGoogleSignIn();
     });
 }
 
