@@ -1,0 +1,478 @@
+:root {
+    --primary-color: #4a90e2;
+    --bg-color: #f5f7fa;
+    --text-color: #333;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease-in-out, visibility 0.8s;
+}
+
+.page.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.page.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* 登入頁面 */
+.login-container {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
+    z-index: 10;
+}
+
+.login-container h1 {
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.login-container p {
+    margin-bottom: 30px;
+    color: #666;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.input-group input {
+    padding: 12px 20px;
+    border: 2px solid #e1e1e1;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+    width: 250px;
+}
+
+.input-group input:focus {
+    border-color: var(--primary-color);
+}
+
+.input-group button {
+    padding: 12px 24px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+.input-group button:hover {
+    background-color: #357abd;
+}
+
+.input-group button:active {
+    transform: scale(0.95);
+}
+
+/* 氣球動畫頁面 - 多層漸層：地平線暖橙→淡粉→天藍→深藍天空 */
+#page-balloons {
+    background: linear-gradient(
+        to top,
+        #ffd6a5 0%,
+        #ffb347 5%,
+        #ff8c69 10%,
+        #ffb3c6 20%,
+        #c9e8f7 40%,
+        #7ec8e3 65%,
+        #4a9fbf 85%,
+        #1a6fa8 100%
+    );
+}
+
+#balloon-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* 共用精美氣球樣式 */
+.balloon, #giant-balloon {
+    /* 更加真實的氣球形狀 */
+    border-radius: 50% 50% 50% 50% / 45% 45% 65% 65%;
+    /* 3D 光澤漸層感 */
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 15%, var(--balloon-color) 45%, var(--balloon-color) 70%, rgba(0,0,0,0.3) 100%);
+    box-shadow: inset -5px -5px 20px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.balloon::after, #giant-balloon::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 10px solid var(--balloon-color);
+    border-radius: 50% 50% 0 0;
+}
+
+.balloon::before, #giant-balloon::before {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    left: 50%;
+    width: 20px;
+    height: 50px;
+    /* 讓氣球線帶點自然彎曲感 */
+    border-right: 1px solid rgba(0,0,0,0.4);
+    border-bottom-right-radius: 50px;
+    transform: translateX(-100%);
+}
+
+.balloon {
+    position: absolute;
+    bottom: -150px;
+    width: 60px;
+    height: 75px;
+    animation: flyUp var(--duration) ease-in-out forwards;
+    z-index: 2;
+}
+
+/* 加入微幅左右搖擺的真實飛行軌跡 */
+@keyframes flyUp {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.8;
+    }
+    33% {
+        transform: translateY(-33vh) rotate(5deg) translateX(15px);
+    }
+    66% {
+        transform: translateY(-66vh) rotate(-5deg) translateX(-15px);
+    }
+    100% {
+        transform: translateY(calc(-100vh - 200px)) rotate(var(--rotation)) translateX(0);
+        opacity: 0.8;
+    }
+}
+
+/* 大氣球 - 初始完全隱藏，不佔位 */
+#giant-balloon {
+    position: fixed;
+    width: 60px;
+    height: 75px;
+    z-index: 20;
+    cursor: pointer;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    /* 錨點置中 */
+    transform-origin: center center;
+}
+
+#giant-balloon.visible {
+    display: flex;
+}
+
+#giant-balloon.show-giant {
+    animation: floatGiant 4s ease-in-out infinite alternate !important;
+}
+
+/* Step 1: 凍結 animation，給瀏覽器一個靜態的 transform 起始值 */
+#giant-balloon.freeze {
+    animation: none !important;
+    transform: translate(-50%, -50%) scale(2.8) !important;
+    transition: none !important;
+}
+
+/* Step 2: 下一幀才加上這個 class，啟動緩慢的 5s transition */
+#giant-balloon.expanding {
+    animation: none !important;
+    transform: translate(-50%, -50%) scale(60) !important;
+    transition: transform 5s ease-in-out !important;
+    z-index: 50;
+}
+
+.click-text {
+    color: white;
+    font-weight: bold;
+    font-size: 10px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+    transform: translateY(-5px);
+}
+
+#giant-balloon.ready-to-click .click-text {
+    opacity: 1;
+}
+
+#giant-balloon.expanding .click-text {
+    opacity: 0;
+}
+
+@keyframes floatGiant {
+    0%   { transform: translate(-50%, -50%) scale(2.8); }
+    100% { transform: translate(-50%, calc(-50% - 20px)) scale(2.8); }
+}
+
+/* 結果頁面 */
+#page-result {
+    background-color: var(--bg-color);
+    z-index: 100;
+}
+
+.result-container {
+    width: 90%;
+    max-width: 800px;
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+    opacity: 0;
+}
+
+.page.active .result-container {
+    animation: slideUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+#group-title {
+    text-align: center;
+    color: var(--primary-color);
+    font-size: 32px;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px dashed #eee;
+}
+
+.members-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.member-card {
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.member-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.member-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.member-class {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 15px;
+}
+
+.member-contact {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.contact-platform {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--primary-color);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.contact-value {
+    color: #333;
+    word-break: break-all;
+}
+
+#back-btn {
+    display: block;
+    margin: 0 auto;
+    padding: 12px 30px;
+    background: #f0f0f0;
+    color: #555;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#back-btn:hover {
+    background: #e4e4e4;
+}
+
+/* 錯誤訊息 overlay */
+#error-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 100;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+#error-box {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 16px;
+    padding: 32px 36px;
+    max-width: 560px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    font-family: 'Noto Sans TC', monospace;
+}
+
+#error-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+#error-box h2 {
+    font-size: 20px;
+    color: #f38ba8;
+    margin-bottom: 20px;
+}
+
+.error-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.error-label {
+    font-size: 11px;
+    font-weight: 700;
+    background: #313244;
+    color: #89b4fa;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+#error-box code {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #a6e3a1;
+    word-break: break-all;
+}
+
+.error-url {
+    color: #fab387 !important;
+}
+
+.error-hint {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #7f849c;
+    line-height: 1.6;
+}
+
+#error-back-btn {
+    margin-top: 20px;
+    padding: 10px 24px;
+    background: #f38ba8;
+    color: #1e1e2e;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#error-back-btn:hover {
+    background: #eba0ac;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}

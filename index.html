@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迎新分組查詢</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- 登入頁面 -->
+        <section id="page-login" class="page active">
+            <div class="login-container">
+                <h1>迎新分組查詢</h1>
+                <p>請輸入您的學號來獲取分組資訊</p>
+                <div class="input-group">
+                    <input type="text" id="student-id" placeholder="例如：110590001">
+                    <button id="submit-btn">查詢</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 氣球載入頁面 -->
+        <section id="page-balloons" class="page hidden">
+            <div id="balloon-container"></div>
+            <!-- 佔據螢幕的大氣球 (接收資料後顯示) -->
+            <div id="giant-balloon" class="hidden">
+                <div class="click-text">點擊開啟</div>
+            </div>
+        </section>
+
+        <!-- 結果頁面 -->
+        <section id="page-result" class="page hidden">
+            <div class="result-container">
+                <h2 id="group-title">第 <span id="group-name"></span> 小隊</h2>
+                <div class="members-list" id="members-list">
+                    <!-- 動態載入 -->
+                </div>
+                <button id="back-btn">返回重新查詢</button>
+            </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

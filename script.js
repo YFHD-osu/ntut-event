@@ -1,0 +1,286 @@
+const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#f15bb5', '#00bbf9', '#00f5d4', '#ff6b6b', '#ffd166', '#06d6a0'];
+
+const pageLogin    = document.getElementById('page-login');
+const pageBalloons = document.getElementById('page-balloons');
+const pageResult   = document.getElementById('page-result');
+const balloonContainer = document.getElementById('balloon-container');
+const submitBtn    = document.getElementById('submit-btn');
+const studentIdInput = document.getElementById('student-id');
+const giantBalloon = document.getElementById('giant-balloon');
+const backBtn      = document.getElementById('back-btn');
+
+let balloonInterval;
+let cachedResult = null;
+
+submitBtn.addEventListener('click', () => {
+    const studentId = studentIdInput.value.trim();
+    if (!studentId) { alert('請輸入學號'); return; }
+
+    pageLogin.classList.remove('active');
+    pageLogin.classList.add('hidden');
+    pageBalloons.classList.remove('hidden');
+    pageBalloons.classList.add('active');
+
+    startBalloons();
+    fetchData(studentId);
+});
+
+studentIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitBtn.click();
+});
+
+/* ────────────────────────────────────────────
+   氣球生成
+──────────────────────────────────────────── */
+function startBalloons() {
+    // 一開始批量放出幾顆，讓畫面立刻熱鬧
+    for (let i = 0; i < 8; i++) {
+        setTimeout(() => createBalloon(), i * 150);
+    }
+    // 之後每 250ms 再出一顆 → 密度更高
+    balloonInterval = setInterval(createBalloon, 250);
+}
+
+function createBalloon() {
+    const balloon = document.createElement('div');
+    balloon.classList.add('balloon');
+
+    const color    = colors[Math.floor(Math.random() * colors.length)];
+    const left     = 2 + Math.random() * 94;           // 2-96vw
+    const duration = 9 + Math.random() * 8;             // 9-17s，飄得很慢
+    const size     = 45 + Math.random() * 40;           // 45-85px 大小不一
+    const rotation = -20 + Math.random() * 40;
+
+    balloon.style.left   = `${left}vw`;
+    balloon.style.width  = `${size}px`;
+    balloon.style.height = `${size * 1.25}px`;
+    balloon.style.setProperty('--balloon-color', color);
+    balloon.style.setProperty('--duration', `${duration}s`);
+    balloon.style.setProperty('--rotation', `${rotation}deg`);
+
+    // 標記，方便之後找到它（不用隱形消失）
+    balloon.dataset.durationMs = duration * 1000;
+
+    balloonContainer.appendChild(balloon);
+
+    // 飛出畫面後自行清除
+    setTimeout(() => { if (balloon.parentElement) balloon.remove(); }, duration * 1000 + 200);
+}
+
+/* ────────────────────────────────────────────
+   資料取得
+──────────────────────────────────────────── */
+function fetchData(studentId) {
+    // ※ 請換成您的真實 Google App Script 網址 ※
+    const scriptUrl = `https://script.google.com/macros/s/AKfycbyhpc568MDo2tEaxvB-qkZstNCXYA6KdlLc20opYhnWqBZ1k9sF023P_RmvYBvRuuu8ww/exec?studentId=${studentId}`;
+
+    // 保證至少讓使用者欣賞 3 秒動畫
+    const delay = new Promise(resolve => setTimeout(resolve, 3000));
+
+    const fetchPromise = fetch(scriptUrl)
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+            return res.json();
+        });
+
+    Promise.all([delay, fetchPromise])
+        .then(([, data]) => {
+            cachedResult = data;
+            onDataReceived();
+        })
+        .catch(err => {
+            showFetchError(studentId, scriptUrl, err);
+        });
+}
+
+/* ────────────────────────────────────────────
+   Fetch 失敗：將錯誤訊息直接顯示在氣球頁面上
+──────────────────────────────────────────── */
+function showFetchError(studentId, url, err) {
+    clearInterval(balloonInterval);
+
+    // 把錯誤訊息疊加在氣球頁面上
+    const overlay = document.createElement('div');
+    overlay.id = 'error-overlay';
+    overlay.innerHTML = `
+        <div id="error-box">
+            <div id="error-icon">⚠️</div>
+            <h2>資料讀取失敗</h2>
+            <div class="error-row"><span class="error-label">學號</span><code>${studentId}</code></div>
+            <div class="error-row"><span class="error-label">錯誤</span><code>${err.message || err}</code></div>
+            <div class="error-row"><span class="error-label">URL</span><code class="error-url">${url}</code></div>
+            <p class="error-hint">請確認 App Script 網址是否正確，以及 CORS 設定是否允許外部請求。</p>
+            <button id="error-back-btn">返回重試</button>
+        </div>
+    `;
+    pageBalloons.appendChild(overlay);
+
+    document.getElementById('error-back-btn').addEventListener('click', () => {
+        overlay.remove();
+        pageBalloons.classList.remove('active');
+        pageBalloons.classList.add('hidden');
+        pageLogin.classList.remove('hidden');
+        pageLogin.classList.add('active');
+        balloonContainer.innerHTML = '';
+    });
+}
+
+/* ────────────────────────────────────────────
+   資料回來後：讓一顆氣球「被選中」飛出中央
+   其他氣球繼續飄動與生成，直到使用者點擊為止
+──────────────────────────────────────────── */
+function onDataReceived() {
+    // 不在此處停止生成，背景氣球繼續熱鬧飄動
+
+    // 從已有氣球中挑一顆最接近畫面中段的作為大氣球起點
+    const balloons = [...document.querySelectorAll('.balloon')];
+    let chosen = null;
+    if (balloons.length > 0) {
+        const midY = window.innerHeight / 2;
+        const sorted = balloons.slice().sort((a, b) => {
+            const ra = a.getBoundingClientRect();
+            const rb = b.getBoundingClientRect();
+            return Math.abs(ra.top - midY) - Math.abs(rb.top - midY);
+        });
+        chosen = sorted[0];
+    }
+
+    showGiantBalloon(chosen);
+}
+
+/* ────────────────────────────────────────────
+   大氣球：從選中位置滑向中央，再浮動等待點擊
+──────────────────────────────────────────── */
+function showGiantBalloon(sourceBalloon) {
+    let color = colors[Math.floor(Math.random() * colors.length)];
+    let startX, startY;
+
+    if (sourceBalloon) {
+        const rect = sourceBalloon.getBoundingClientRect();
+        startX = rect.left + rect.width  / 2;
+        startY = rect.top  + rect.height / 2;
+        color  = sourceBalloon.style.getPropertyValue('--balloon-color') || color;
+        // 原本的小氣球立刻隱藏（大氣球會從同樣位置出現，視覺上是「同一顆」）
+        sourceBalloon.style.opacity = '0';
+        setTimeout(() => { if (sourceBalloon.parentElement) sourceBalloon.remove(); }, 100);
+    } else {
+        startX = window.innerWidth  / 2;
+        startY = window.innerHeight + 80;
+    }
+
+    // 定位大氣球於選中位置
+    giantBalloon.style.setProperty('--balloon-color', color);
+    giantBalloon.style.transition  = 'none';
+    giantBalloon.style.left        = `${startX}px`;
+    giantBalloon.style.top         = `${startY}px`;
+    giantBalloon.style.transform   = 'translate(-50%, -50%) scale(1)';
+
+    // 讓它現身（display:flex）
+    giantBalloon.classList.add('visible');
+
+    // 強制重繪再啟動 transition
+    void giantBalloon.offsetWidth;
+
+    // 緩緩飄向正中央並放大
+    giantBalloon.style.transition = 'left 3.5s ease-in-out, top 3.5s ease-in-out, transform 3.5s ease-in-out';
+    giantBalloon.style.left      = '50%';
+    giantBalloon.style.top       = '50%';
+    giantBalloon.style.transform = 'translate(-50%, -50%) scale(2.8)';
+
+    // 到位後換成上下浮動 animation（show-giant 的 keyframes 已含 scale）
+    setTimeout(() => {
+        giantBalloon.style.transition = 'none';
+        giantBalloon.classList.add('ready-to-click');
+        giantBalloon.classList.add('show-giant');
+    }, 3600);
+}
+
+/* ────────────────────────────────────────────
+   點擊大氣球：緩慢放大填滿螢幕 → 切換到結果頁
+   背景氣球直到此處才停止生成
+──────────────────────────────────────────── */
+giantBalloon.addEventListener('click', () => {
+    if (!giantBalloon.classList.contains('show-giant')) return;
+
+    // 點擊瞬間停止產生新氣球
+    clearInterval(balloonInterval);
+
+    // Step 1: 移除 animation，加上 freeze 讓瀏覽器在此幀看到靜態 transform
+    giantBalloon.classList.remove('show-giant', 'ready-to-click');
+    giantBalloon.classList.add('freeze');
+
+    // Step 2: 雙層 requestAnimationFrame，確保瀏覽器已 commit 靜態值後才啟動 transition
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            giantBalloon.classList.remove('freeze');
+            giantBalloon.classList.add('expanding');
+
+            // transition 5s，4.6s 時畫面已填滿，平順切換頁面
+            setTimeout(() => {
+                renderResult(cachedResult);
+
+                pageBalloons.classList.remove('active');
+                pageBalloons.classList.add('hidden');
+                pageResult.classList.remove('hidden');
+                pageResult.classList.add('active');
+
+                // 清理氣球容器
+                setTimeout(() => {
+                    giantBalloon.classList.remove('expanding', 'visible');
+                    giantBalloon.style.transition = 'none';
+                    balloonContainer.innerHTML = '';
+                }, 800);
+            }, 4600);
+        });
+    });
+});
+
+/* ────────────────────────────────────────────
+   渲染結果
+──────────────────────────────────────────── */
+function renderResult(data) {
+    document.getElementById('group-name').textContent = data.groupName;
+    const membersList = document.getElementById('members-list');
+    membersList.innerHTML = '';
+
+    data.members.forEach((member, i) => {
+        const card = document.createElement('div');
+        card.classList.add('member-card');
+        card.style.animationDelay = `${i * 0.12}s`;
+
+        const contacts = [
+            { icon: '📷', label: 'Instagram', value: member.contact_1 },
+            { icon: '💬', label: 'Line',      value: member.contact_2 },
+            { icon: '🔗', label: '其他',       value: member.contact_3 },
+        ];
+
+        let contactsHtml = contacts
+            .filter(c => c.value)
+            .map(c => `
+                <div class="contact-item">
+                    <span class="contact-platform">${c.icon} ${c.label}</span>
+                    <span class="contact-value">${c.value}</span>
+                </div>`)
+            .join('');
+
+        card.innerHTML = `
+            <div class="member-name">${member.name}</div>
+            <div class="member-class">${member.class}</div>
+            <div class="member-contact">
+                ${contactsHtml || '<div style="color:#aaa;">無聯絡方式</div>'}
+            </div>
+        `;
+        membersList.appendChild(card);
+    });
+}
+
+/* ────────────────────────────────────────────
+   返回按鈕
+──────────────────────────────────────────── */
+backBtn.addEventListener('click', () => {
+    studentIdInput.value = '';
+    pageResult.classList.remove('active');
+    pageResult.classList.add('hidden');
+    pageLogin.classList.remove('hidden');
+    pageLogin.classList.add('active');
+});
