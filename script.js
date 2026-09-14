@@ -11,7 +11,7 @@ let balloonInterval;
 let cachedResult = null;
 
 // ※ 請填入您的 Google Cloud Console OAuth 2.0 Client ID ※
-const GOOGLE_CLIENT_ID = '748402304369-9l1921or0au7t3n8j1qohhtj2pfovcin.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '513654452609-049c05et1hojovs296ai4ohmlne9b4jn.apps.googleusercontent.com';
 
 // ※ 請換成您的真實 Google App Script 網址 ※
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSH24EH5KZY6-8XzIANxRd9kLNyygQfxGRqzsg5d-rQaxm9MR8qwSXq3J1fMWmPHgJ3g/exec';
